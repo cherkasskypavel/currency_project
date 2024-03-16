@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str
     JWT_EXPIRE_DELTA: int
     API_KEY: str
+    EXTERNAL_API_URL: str
 
     class Config:
         env_file = "currency_project/.env"
