@@ -1,16 +1,16 @@
 from typing import List
+from datetime import date, datetime
 
-from sqlalchemy import select, delete, insert
+from sqlalchemy import select, delete, insert, desc, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas.user import UserInput
-from app.api.schemas.currency import CurrencyExternal
+import app.api.schemas.currency as cur_sch
+import app.api.schemas.user as user_sch
 import app.core.security as sec
 import app.db.models as md
 
 
-async def create_user(user: UserInput, session: AsyncSession):
-    print("#" * 50)
+async def create_user(user: user_sch.UserInput, session: AsyncSession):
     hashed_password = await sec.hash_password(user.password)
     user_to_create = md.User(name=user.name,
                           email=user.email,
@@ -35,7 +35,7 @@ async def get_currencies_from_db(session: AsyncSession):
     return [x.returnable for x in db_currency_list.scalars()]
 
 
-async def update_currency_table(currencies: List[CurrencyExternal],
+async def update_currency_table(currencies: List[cur_sch.CurrencyExternal],
                                 session: AsyncSession):
     delete_statement = delete(md.Currency)
     await session.execute(delete_statement)
@@ -45,6 +45,65 @@ async def update_currency_table(currencies: List[CurrencyExternal],
         await session.execute(insert_statement)
 
     await session.commit()
-    session.close()
-
     return currencies
+
+
+async def add_update_record(session: AsyncSession):
+    new_record = md.ListRequest()
+    session.add(new_record)
+    await session.commit()
+    await session.refresh(new_record)
+    return new_record.id
+
+
+async def get_latest_update(session: AsyncSession):
+    stmt = select(md.ListRequest)\
+            .order_by(desc(md.ListRequest.date))\
+            .limit(1)
+
+    result = await session.execute(stmt)
+    last_update = result.scalar_one_or_none() 
+
+    if last_update:
+        return last_update.date
+    else:
+        return False
+    
+
+async def get_cached_exchange(exchange: cur_sch.CurrencyExchange,
+                              session: AsyncSession) -> cur_sch.CurrencyExchangeResult:
+    current_date = datetime.now().date()
+
+    stmt = select(md.ExchangeRequest)\
+        .where(and_(md.ExchangeRequest.from_currency == exchange.from_currency,
+                    md.ExchangeRequest.to_currency == exchange.to_currency,
+                    md.ExchangeRequest.date == current_date))\
+        .limit(1)
+    
+
+    result = await session.execute(stmt)
+    fresh_record = result.scalar_one_or_none()
+    print(fresh_record, "<---------------------------------- проверка select")
+
+    if fresh_record:
+        total_result = fresh_record.result * exchange.amount
+        exchange_to_return = cur_sch.CurrencyExchangeResult.model_validate(fresh_record)
+        exchange_to_return.result = total_result
+        return exchange_to_return
+    
+
+async def add_exchange_request(exchange: cur_sch.CurrencyExchangeResult,
+                                session: AsyncSession):
+
+    new_record = md.ExchangeRequest(
+        from_currency=exchange.from_currency,
+        to_currency=exchange.to_currency,
+        result=round(exchange.result / exchange.amount, 2)
+    )
+
+    session.add(new_record)
+    await session.commit()
+    await session.refresh(new_record)
+    return new_record.id
+
+    

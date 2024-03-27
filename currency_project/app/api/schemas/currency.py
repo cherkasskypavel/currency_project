@@ -1,16 +1,15 @@
-from typing import List, Optional, Annotated
+from typing import List, Optional
 
 from pydantic import BaseModel, Field, validator, ConfigDict
 
 
 class CurrencyTypeBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     code: str = Field(pattern=r"[A-Z]{3}")
 
-    class Config:
-        orm_mode: True
-        
+       
 class CurrencyExternal(CurrencyTypeBase):
-    model_config = ConfigDict(from_attributes=True)
+    
     description: Optional[str]
 
 
@@ -28,6 +27,7 @@ class CurrencyExchange(BaseModel):
 
 
 class CurrencyExchangeResult(CurrencyExchange):
+    model_config = ConfigDict(from_attributes=True)
     result: float
 
     @validator('result')

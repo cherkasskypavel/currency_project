@@ -35,4 +35,4 @@ async def exchange_currency(exchange_form: CurrencyExchange) -> CurrencyExchange
             result = await response.json()
             return CurrencyExchangeResult(**exchange_form.model_dump(),
                                           result=result['result'])
-        
+            
