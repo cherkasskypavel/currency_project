@@ -8,6 +8,6 @@ __pycache__
 include
 Lib
 Scripts
-share\man\man
+currency_project/share
 *.env
 *.cfg
