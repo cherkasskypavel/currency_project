@@ -1,2 +1,13 @@
-alembic_ini
 logs.txt
+план.txt
+.vscode
+.pytest_cache
+.idea
+__pycache__
+*.db
+include
+Lib
+Scripts
+share\man\man
+*.env
+*.cfg
