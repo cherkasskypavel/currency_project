@@ -1,7 +1,2 @@
-.idea
-.pytest-cache
-.vscode
-__pycache__
-*.env
-*.cfg
+alembic_ini
 logs.txt

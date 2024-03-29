@@ -83,12 +83,12 @@ async def get_cached_exchange(exchange: cur_sch.CurrencyExchange,
 
     result = await session.execute(stmt)
     fresh_record = result.scalar_one_or_none()
-    print(fresh_record, "<---------------------------------- проверка select")
 
     if fresh_record:
         total_result = fresh_record.result * exchange.amount
         exchange_to_return = cur_sch.CurrencyExchangeResult.model_validate(fresh_record)
         exchange_to_return.result = total_result
+        exchange_to_return.amount = exchange.amount
         return exchange_to_return
     
 

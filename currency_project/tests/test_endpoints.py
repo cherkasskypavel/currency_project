@@ -22,7 +22,7 @@ def _test_create_db():
     yield
     asyncio.run(cfg.drop_models())
     cfg.clear_test_db()
-    JWT_TOKEN = ''
+    JWT_TOKEN = ""
 
 
 
@@ -50,14 +50,16 @@ class TestUser:
 
     
     def test_correct_login(self):
+        global JWT_TOKEN
         response = client.post('/auth/login',
                                data={"username": self.correct_user.email,
                                      "password": self.correct_user.password}
                                )
         assert response.status_code == status.HTTP_200_OK
-        assert "access_token" in response.json()
-        assert "token_type" in response.json()
-        JWT_TOKEN = response.json()["access_token"]
+        r_json = response.json()
+        assert "access_token" in r_json
+        JWT_TOKEN = r_json["access_token"]
+        assert "token_type" in r_json
 
 
     def test_auth_error(self):
@@ -70,11 +72,43 @@ class TestUser:
 
 
 class TestCurrency:
-    headers = {"Authorization": f"bearer {JWT_TOKEN}"}
-
     def test_get_currency_list(self):
-
-        response = client.get("/currency/list", headers=self.headers)
+        global JWT_TOKEN
+        headers = {"Authorization": f"Bearer {JWT_TOKEN}"}
+        response = client.get("/currency/list", headers=headers)
         assert response.status_code == status.HTTP_200_OK
-        assert response.json()['']
-        #  добавить в таблицу с курсами поле даты
+        currency_list = response.json()
+        assert len(currency_list) > 1
+        assert "code" in currency_list[0]
+        assert "description" in currency_list[0]
+
+
+    @pt.mark.parametrize("amount, amount_param", enumerate(("", "&amount=2", "&amount=3"), 1))
+    def test_get_exchange(self, amount, amount_param):
+        global JWT_TOKEN
+        headers = {"Authorization": f"Bearer {JWT_TOKEN}"}
+        response = client.get(f"/currency/exchange/?from_currency=usd&to_currency=rub{amount_param}",
+                              headers=headers)
+
+        assert response.status_code == status.HTTP_200_OK
+        r_json = response.json()
+        assert "amount" in r_json
+        assert r_json["amount"] == float(amount)
+    
+    
+    def test_invalid_currency(self):
+        global JWT_TOKEN
+        headers = {"Authorization": f"Bearer {JWT_TOKEN}"}
+
+        response = client.get("/currency/exchange/?from_currency=abc&to_currency=cde",
+                              headers=headers)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "Такие валюты не найдены."
+
+    
+    def test_not_authenticated(self):
+        response = client.get("/currency/list")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.json()["detail"] == "Not authenticated"
+
+    
